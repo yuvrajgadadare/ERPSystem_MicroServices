@@ -1,0 +1,139 @@
+using LeadManagement.API.Middleware;
+using LeadManagement.Application.Interfaces.Repositories;
+using LeadManagement.Application.Interfaces.Repositories.Enquiry;
+using LeadManagement.Application.Interfaces.Repositories.EnquiryFollowup;
+using LeadManagement.Application.Interfaces.Repositories.Lead;
+using LeadManagement.Application.Interfaces.Repositories.LeadFollowup;
+using LeadManagement.Application.Interfaces.Repositories.LeadSource;
+using LeadManagement.Application.Interfaces.Repositories.Qualification;
+using LeadManagement.Application.Interfaces.Repositories.TrainingCourse;
+using LeadManagement.Application.Interfaces.Services;
+using LeadManagement.Application.Interfaces.Services.Enquiry;
+using LeadManagement.Application.Interfaces.Services.Lead;
+using LeadManagement.Application.Services;
+using LeadManagement.Application.Services.Enquiry;
+using LeadManagement.Application.Services.Lead;
+using LeadManagement.Infrastructure.Repositories;
+using LeadManagement.Infrastructure.Repositories.Enquiry;
+using LeadManagement.Infrastructure.Repositories.EnquiryFollowup;
+using LeadManagement.Infrastructure.Repositories.Lead;
+using LeadManagement.Infrastructure.Repositories.LeadSource;
+using LeadManagement.Infrastructure.Repositories.TrainingCourse;
+using LeadManagement.Infrastructure.Services;
+
+using Serilog;
+
+
+
+var builder = WebApplication.CreateBuilder(args);
+
+
+// =========================
+// Serilog
+// =========================
+
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .WriteTo.File(
+        "Logs/leadmanagement-.log",
+        rollingInterval: RollingInterval.Day)
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+
+
+// =========================
+// Controllers
+// =========================
+
+builder.Services.AddControllers();
+
+// =========================
+// Swagger
+// =========================
+
+
+
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+
+
+// =========================
+// Repository Registration
+// =========================
+
+builder.Services.AddScoped<ILeadRepository, LeadRepository>();
+builder.Services.AddScoped<ITrainingCourseRepository,TrainingCourseRepository>();
+builder.Services.AddScoped<IEnquiryFollowupRepository,EnquiryFollowupRepository>();
+builder.Services.AddScoped<IEnquiryRepository, EnquiryRepository>();
+builder.Services.AddScoped<ILeadFollowupRepository,LeadFollowupRepository>();
+builder.Services.AddScoped<IQualificationRepository, QualificationRepository>();
+builder.Services.AddScoped<ILeadSourceRepository, LeadSourceRepository>();
+builder.Services.AddScoped<ILeadImportRepository,LeadImportRepository>();
+
+
+
+// =========================
+// Service Registration
+// =========================
+
+builder.Services.AddScoped<ILeadService, LeadService>();
+builder.Services.AddScoped<ITrainingCourseService,TrainingCourseService>();
+builder.Services.AddScoped<IEnquiryFollowupService, EnquiryFollowupService>();
+builder.Services.AddScoped<IEnquiryService, EnquiryService>();
+builder.Services.AddScoped<ILeadFollowupService,LeadFollowupService>();
+builder.Services.AddScoped<IQualificationService, QualificationService>();
+builder.Services.AddScoped<ILeadSourceService, LeadSourceService>();
+builder.Services.AddScoped<ILeadImportService,LeadImportService>();
+
+
+
+
+
+
+
+// =========================
+// Build Application
+// =========================
+
+var app = builder.Build();
+
+
+// =========================
+// Swagger
+// =========================
+
+app.UseSwagger();
+
+app.UseSwaggerUI();
+
+
+// =========================
+// Exception Middleware
+// =========================
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+
+// =========================
+// HTTPS
+// =========================
+
+app.UseHttpsRedirection();
+
+
+
+// =========================
+// Controllers
+// =========================
+
+app.MapControllers();
+
+
+// =========================
+// Run
+// =========================
+
+app.Run();

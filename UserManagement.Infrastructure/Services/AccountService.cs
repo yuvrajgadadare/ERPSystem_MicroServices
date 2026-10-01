@@ -1,0 +1,188 @@
+﻿using Microsoft.AspNetCore.Identity;
+using System;
+using System.Collections.Generic;
+using System.Text;
+using UserManagement.Application.DTOs.Account;
+using UserManagement.Application.DTOs.Email;
+using UserManagement.Application.Exceptions;
+using UserManagement.Application.Interfaces;
+using UserManagement.Infrastructure.Persistence.Identity;
+
+namespace UserManagement.Infrastructure.Services
+{
+    public class AccountService : IAccountService
+    {
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IEmailService _emailService;
+        public AccountService(
+            UserManager<ApplicationUser> userManager, IEmailService emailService)
+        {
+            _userManager = userManager;
+            _emailService = emailService;
+        }
+
+        public async Task<string> ChangePasswordAsync(ChangePasswordDto dto)
+        {
+            if (dto == null)
+            {
+                throw new BadRequestException("Request data is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.UserId))
+            {
+                throw new BadRequestException("User ID is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.CurrentPassword))
+            {
+                throw new BadRequestException("Current password is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.NewPassword))
+            {
+                throw new BadRequestException("New password is required.");
+            }
+
+            if (dto.CurrentPassword == dto.NewPassword)
+            {
+                throw new BadRequestException(
+                      "New password must be different from current password.");
+            }
+
+            var user = await _userManager.FindByIdAsync(dto.UserId);
+
+            if (user == null)
+            {
+                throw new NotFoundException(
+                    "User not found.");
+            }
+
+            if (!user.IsActive)
+            {
+                throw new ForbiddenException(
+                    "User account is deactivated.");
+            }
+
+            var result =
+                await _userManager.ChangePasswordAsync(
+                    user,
+                    dto.CurrentPassword,
+                    dto.NewPassword);
+
+            if (!result.Succeeded)
+            {
+                var errors =
+                    string.Join(
+                        ", ",
+                        result.Errors.Select(
+                            e => e.Description));
+
+                throw new BadRequestException(
+                    $"Password change failed. {errors}");
+            }
+
+            return "Password changed successfully.";
+        }
+
+        public async Task<string> ForgotPasswordAsync(ForgotPasswordDto dto)
+        {
+            if (dto == null)
+            {
+                throw new BadRequestException("Request data is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.EmailAddress))
+            {
+                throw new BadRequestException("Email address is required.");
+            }
+
+            var email = dto.EmailAddress.Trim();
+
+            var user = await _userManager.FindByEmailAsync(email);
+
+            if (user == null)
+            {
+                throw new NotFoundException(
+                    "User not found with the provided email address.");
+            }
+
+            if (!user.IsActive)
+            {
+                throw new ForbiddenException(
+                    "User account is deactivated.");
+            }
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+            return token;
+        }
+
+        public async Task<string> ResetPasswordAsync(ResetPasswordDto dto)
+        {
+            if (dto == null)
+            {
+                throw new BadRequestException("Request data is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.EmailAddress))
+            {
+                throw new BadRequestException("Email address is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.Token))
+            {
+                throw new BadRequestException("Reset token is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.NewPassword))
+            {
+                throw new BadRequestException("New password is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.ConfirmPassword))
+            {
+                throw new BadRequestException("Confirm password is required.");
+            }
+
+            if (dto.NewPassword != dto.ConfirmPassword)
+            {
+                throw new BadRequestException("New password and confirm password do not match.");
+            }
+
+            var user = await _userManager.FindByEmailAsync(dto.EmailAddress.Trim());
+
+            if (user == null)
+            {
+                throw new NotFoundException(
+                    "User not found.");
+            }
+
+            if (!user.IsActive)
+            {
+                throw new ForbiddenException(
+                    "User account is deactivated.");
+            }
+
+
+            var result = await _userManager.ResetPasswordAsync(
+                user,
+                dto.Token,
+                dto.NewPassword);
+
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(
+                    ", ",
+                    result.Errors.Select(e => e.Description));
+
+                throw new BadRequestException(
+                     $"Password reset failed. {errors}");
+            }
+
+            return "Password reset successfully.";
+        }
+
+        
+    }
+}
+
